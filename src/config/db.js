@@ -1,23 +1,29 @@
-// Ý tưởng: Ngày 1 mình chưa cần DB nên không muốn cài mongoose.
-// File này sẽ chỉ import('mongoose') khi .env có MONGO_URI.
-// Nhờ vậy, nếu MONGO_URI trống thì không cần package mongoose vẫn chạy được.
+// src/config/db.js
+// File cấu hình kết nối MongoDB bằng Mongoose
 
-export async function connect() {
+import mongoose from "mongoose";
+
+export async function connectDB() {
   const uri = process.env.MONGO_URI;
 
-  // Chưa cấu hình DB => bỏ qua cho nhẹ, in cảnh báo để nhớ
+  // Nếu chưa cấu hình MONGO_URI thì in cảnh báo và không kết nối
   if (!uri) {
-    console.warn("Chưa có MONGO_URI, tạm thời bỏ qua kết nối DB (Day 1).");
+    console.warn("Chưa có MONGO_URI, tạm thời bỏ qua kết nối DB.");
     return;
   }
 
   try {
-    // Import động: chỉ khi cần mới tải mongoose
-    const mongoose = (await import("mongoose")).default;
-    await mongoose.connect(uri);
+    await mongoose.connect(uri, {
+      // Các option cơ bản, Mongoose 7+ có thể không cần cũng được
+    });
+
     console.log("Kết nối MongoDB thành công!");
   } catch (err) {
     console.error("Lỗi khi kết nối MongoDB:", err.message);
-    process.exit(1);
+    // Ném lỗi ra ngoài để app.js biết và không start server
+    throw err;
   }
 }
+
+// Nếu sau này cần dùng trực tiếp mongoose ở nơi khác thì import mongoose từ file này cũng được
+export default mongoose;
