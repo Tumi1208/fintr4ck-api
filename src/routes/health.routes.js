@@ -1,23 +1,11 @@
-// Route này để test xem server có đang chạy hay không
-// Dạng như "ping" API, nếu trả về ok thì backend hoạt động tốt
+// Route nhỏ để kiểm tra server còn sống không
 
-import { Router } from "express";
-const router = Router();
+import express from "express";
 
-/**
- * @openapi
- * /health:
- *   get:
- *     summary: Kiểm tra trạng thái server
- *     responses:
- *       200:
- *         description: Server đang chạy tốt
- */
-router.get("/health", (req, res) => {
-  res.json({
-    ok: true,
-    message: "Server Fintr4ck API đang hoạt động "
-  });
+const router = express.Router();
+
+router.get("/", (req, res) => {
+  res.json({ status: "ok" });
 });
 
 export default router;

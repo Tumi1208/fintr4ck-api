@@ -8,6 +8,7 @@ import { connectDB } from "./config/db.js";
 import { swaggerUi, swaggerSpec } from "./config/swagger.js";
 import authRoutes from "./routes/auth.routes.js";
 import transactionRoutes from "./routes/transaction.routes.js";
+import healthRoutes from "./routes/health.routes.js";
 import { errorHandler } from "./middleware/error.js";
 
 dotenv.config();
@@ -19,9 +20,9 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      process.env.CLIENT_ORIGIN, // sau này deploy FE
+      process.env.CLIENT_ORIGIN // sau này là domain FE khi deploy
     ].filter(Boolean),
-    credentials: true,
+    credentials: true
   })
 );
 
@@ -30,9 +31,7 @@ app.use(morgan("dev"));
 app.use(express.json());
 
 // Route health đơn giản để kiểm tra server
-app.get("/api/v1/health", (req, res) => {
-  res.json({ status: "ok" });
-});
+app.use("/api/v1/health", healthRoutes);
 
 // Swagger UI để xem tài liệu API
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));

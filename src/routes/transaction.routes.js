@@ -1,26 +1,34 @@
 // src/routes/transaction.routes.js
-// Định nghĩa các endpoint cho giao dịch (thu/chi)
+// Các route cho giao dịch tài chính
 
-import { Router } from "express";
-import authMiddleware from "../middleware/auth.js";
+import express from "express";
+import { requireAuth } from "../middleware/auth.js";
 import {
-  createTransaction,
   getTransactions,
+  createTransaction,
+  updateTransaction,
   deleteTransaction,
+  getSummary
 } from "../controllers/transaction.controller.js";
 
-const router = Router();
+const router = express.Router();
 
-// Tất cả route ở đây đều yêu cầu đăng nhập
-router.use(authMiddleware);
+// Tất cả route bên dưới đều yêu cầu đăng nhập
+router.use(requireAuth);
 
-// Lấy danh sách giao dịch của user hiện tại
+// Lấy danh sách giao dịch
 router.get("/", getTransactions);
 
-// Thêm giao dịch mới
+// Lấy thống kê thu/chi/số dư
+router.get("/summary", getSummary);
+
+// Tạo giao dịch mới
 router.post("/", createTransaction);
 
-// Xóa một giao dịch theo id
+// Cập nhật giao dịch
+router.put("/:id", updateTransaction);
+
+// Xóa giao dịch
 router.delete("/:id", deleteTransaction);
 
 export default router;

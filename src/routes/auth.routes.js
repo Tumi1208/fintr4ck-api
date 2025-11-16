@@ -1,20 +1,18 @@
-// src/routes/auth.routes.js
-// Định nghĩa các route liên quan tới auth (đăng ký, đăng nhập, lấy info)
+// Các route liên quan tới đăng ký / đăng nhập
 
-import { Router } from "express";
+import express from "express";
 import { register, login, getMe } from "../controllers/auth.controller.js";
-import authMiddleware from "../middleware/auth.js";
+import { requireAuth } from "../middleware/auth.js";
 
-const router = Router();
+const router = express.Router();
 
-// POST /api/v1/auth/register
+// Đăng ký
 router.post("/register", register);
 
-// POST /api/v1/auth/login
+// Đăng nhập
 router.post("/login", login);
 
-// GET /api/v1/auth/me
-// Route này cần token, sẽ đi qua authMiddleware trước
-router.get("/me", authMiddleware, getMe);
+// Lấy thông tin user hiện tại
+router.get("/me", requireAuth, getMe);
 
 export default router;

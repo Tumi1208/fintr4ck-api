@@ -1,124 +1,106 @@
 // src/controllers/auth.controller.js
-// Controller xử lý logic đăng ký, đăng nhập, lấy thông tin người dùng
+// Các logic đăng ký, đăng nhập, lấy thông tin user
 
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
-// Hàm tạo JWT, dùng chung cho login và register (nếu muốn)
-function generateToken(user) {
-  // payload chỉ nên chứa thông tin cần thiết
-  return jwt.sign(
-    { userId: user._id, email: user.email },
-    process.env.JWT_SECRET,
-    { expiresIn: "7d" } // token hết hạn sau 7 ngày
-  );
+function createToken(userId) {
+  return jwt.sign({ userId }, process.env.JWT_SECRET, {
+    expiresIn: "7d"
+  });
 }
 
 // Đăng ký tài khoản mới
 export async function register(req, res, next) {
+  const { name, email, password } = req.body;
+
   try {
-    const { name, email, password } = req.body;
-
-    // Kiểm tra dữ liệu đầu vào đơn giản
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: "Thiếu name, email hoặc password" });
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Email và mật khẩu là bắt buộc." });
     }
 
-    // Kiểm tra xem email đã tồn tại chưa
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(409).json({ message: "Email đã tồn tại" });
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ message: "Email đã được sử dụng." });
     }
 
-    // Mã hóa mật khẩu
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hash = await bcrypt.hash(password, 10);
 
-    // Tạo user mới
     const user = await User.create({
-      name,
+      name: name || "New user",
       email,
-      password: hashedPassword,
+      passwordHash: hash
     });
 
-    // Có thể tạo token luôn, nhưng ở đây chỉ trả user basic
-    const token = generateToken(user);
+    const token = createToken(user._id);
 
     return res.status(201).json({
-      message: "Đăng ký thành công",
+      token,
       user: {
         id: user._id,
         name: user.name,
-        email: user.email,
-      },
-      token,
+        email: user.email
+      }
     });
   } catch (err) {
-    // Đẩy lỗi sang middleware errorHandler
     next(err);
   }
 }
 
 // Đăng nhập
 export async function login(req, res, next) {
-  try {
-    const { email, password } = req.body;
+  const { email, password } = req.body;
 
-    // Kiểm tra input đơn giản
+  try {
     if (!email || !password) {
-      return res.status(400).json({ message: "Thiếu email hoặc password" });
+      return res
+        .status(400)
+        .json({ message: "Email và mật khẩu là bắt buộc." });
     }
 
-    // Tìm user theo email
     const user = await User.findOne({ email });
     if (!user) {
-      // Không nói rõ "email không tồn tại" để tránh lộ thông tin
-      return res.status(401).json({ message: "Email hoặc mật khẩu không đúng" });
+      return res.status(401).json({ message: "Sai email hoặc mật khẩu." });
     }
 
-    // So sánh mật khẩu
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Email hoặc mật khẩu không đúng" });
+    // Hỗ trợ cả user cũ (lưu trong field password) và user mới (passwordHash)
+    const hash = user.passwordHash || user.password;
+    if (!hash) {
+      // Không có hash để so sánh => coi như sai mật khẩu
+      return res.status(401).json({ message: "Sai email hoặc mật khẩu." });
     }
 
-    // Tạo token
-    const token = generateToken(user);
+    const match = await bcrypt.compare(password, hash);
+    if (!match) {
+      return res.status(401).json({ message: "Sai email hoặc mật khẩu." });
+    }
+
+    const token = createToken(user._id);
 
     return res.json({
-      message: "Đăng nhập thành công",
       token,
       user: {
         id: user._id,
         name: user.name,
-        email: user.email,
-      },
+        email: user.email
+      }
     });
   } catch (err) {
     next(err);
   }
 }
 
-// Lấy thông tin người dùng hiện tại (dựa vào token)
-// Route này cần middleware authMiddleware chạy trước
+// Lấy thông tin user hiện tại
 export async function getMe(req, res, next) {
   try {
-    // req.userId đã được gán trong authMiddleware
-    const userId = req.userId;
-
-    if (!userId) {
-      return res.status(401).json({ message: "Không tìm thấy userId trong request" });
-    }
-
-    const user = await User.findById(userId).select("-password");
+    const user = await User.findById(req.userId).select("-passwordHash");
     if (!user) {
-      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+      return res.status(404).json({ message: "Không tìm thấy user." });
     }
-
-    return res.json({
-      message: "Lấy thông tin người dùng thành công",
-      user,
-    });
+    return res.json({ user });
   } catch (err) {
     next(err);
   }

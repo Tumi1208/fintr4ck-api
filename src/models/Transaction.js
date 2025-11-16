@@ -1,4 +1,4 @@
-// Mô hình Transaction để lưu từng giao dịch thu/chi của một user
+// Mô hình Transaction để lưu chi tiêu / thu nhập
 
 import mongoose from "mongoose";
 
@@ -7,29 +7,31 @@ const transactionSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: true
     },
     type: {
-      // income = thu, expense = chi
       type: String,
       enum: ["income", "expense"],
-      required: true,
+      required: true
+    },
+    category: {
+      type: String,
+      trim: true
     },
     amount: {
       type: Number,
-      required: true,
-      min: 0,
+      required: true
     },
-    description: {
+    date: {
+      type: Date,
+      required: true
+    },
+    note: {
       type: String,
-      trim: true,
-    },
+      trim: true
+    }
   },
-  {
-    timestamps: true, // tự tạo createdAt, updatedAt
-  }
+  { timestamps: true }
 );
 
-const Transaction = mongoose.model("Transaction", transactionSchema);
-
-export default Transaction;
+export default mongoose.model("Transaction", transactionSchema);
