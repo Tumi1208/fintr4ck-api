@@ -1,108 +1,127 @@
 // src/controllers/transaction.controller.js
-// Các logic CRUD cho giao dịch và thống kê đơn giản
-
 import Transaction from "../models/Transaction.js";
-
-// Lấy danh sách giao dịch của user
-export async function getTransactions(req, res, next) {
-  try {
-    const list = await Transaction.find({ user: req.userId }).sort({
-      date: -1
-    });
-    return res.json({ data: list });
-  } catch (err) {
-    next(err);
-  }
-}
 
 // Tạo giao dịch mới
 export async function createTransaction(req, res, next) {
-  const { type, category, amount, date, note } = req.body;
-
   try {
-    if (!type || !amount || !date) {
-      return res
-        .status(400)
-        .json({ message: "Thiếu type, amount hoặc date." });
+    const { type, categoryId, amount, note, date } = req.body;
+
+    if (!type || !amount) {
+      return res.status(400).json({ message: "Thiếu loại giao dịch hoặc số tiền" });
     }
 
-    const tx = await Transaction.create({
+    const transaction = await Transaction.create({
       user: req.userId,
       type,
-      category,
+      category: categoryId || null,
       amount,
-      date,
-      note
+      note,
+      date: date ? new Date(date) : new Date(),
     });
 
-    return res.status(201).json({ data: tx });
+    res.status(201).json(transaction);
   } catch (err) {
     next(err);
   }
 }
 
-// Cập nhật giao dịch
-export async function updateTransaction(req, res, next) {
-  const { id } = req.params;
-  const { type, category, amount, date, note } = req.body;
-
+// Lấy danh sách giao dịch với filter
+export async function getTransactions(req, res, next) {
   try {
-    const tx = await Transaction.findOneAndUpdate(
-      { _id: id, user: req.userId },
-      { type, category, amount, date, note },
-      { new: true }
-    );
+    const { type, categoryId, from, to, search } = req.query;
 
-    if (!tx) {
-      return res.status(404).json({ message: "Không tìm thấy giao dịch." });
+    const filter = { user: req.userId };
+
+    if (type && ["income", "expense"].includes(type)) {
+      filter.type = type;
     }
 
-    return res.json({ data: tx });
-  } catch (err) {
-    next(err);
-  }
-}
-
-// Xóa giao dịch
-export async function deleteTransaction(req, res, next) {
-  const { id } = req.params;
-
-  try {
-    const tx = await Transaction.findOneAndDelete({
-      _id: id,
-      user: req.userId
-    });
-
-    if (!tx) {
-      return res.status(404).json({ message: "Không tìm thấy giao dịch." });
+    if (categoryId) {
+      filter.category = categoryId;
     }
 
-    return res.status(204).send();
+    if (from || to) {
+      filter.date = {};
+      if (from) filter.date.$gte = new Date(from);
+      if (to) filter.date.$lte = new Date(to);
+    }
+
+    if (search) {
+      filter.note = { $regex: search, $options: "i" };
+    }
+
+    const transactions = await Transaction.find(filter)
+      .sort({ date: -1, createdAt: -1 })
+      .populate("category");
+
+    res.json(transactions);
   } catch (err) {
     next(err);
   }
 }
 
-// Tính thống kê: tổng thu, tổng chi, số dư
+// Tổng quan cho Dashboard
 export async function getSummary(req, res, next) {
   try {
-    const list = await Transaction.find({ user: req.userId });
+    const userId = req.userId;
+
+    const agg = await Transaction.aggregate([
+      { $match: { user: new Transaction().schema.path("user").cast(userId) } },
+      {
+        $group: {
+          _id: "$type",
+          total: { $sum: "$amount" },
+        },
+      },
+    ]);
 
     let totalIncome = 0;
     let totalExpense = 0;
 
-    list.forEach((tx) => {
-      if (tx.type === "income") totalIncome += tx.amount;
-      if (tx.type === "expense") totalExpense += tx.amount;
+    agg.forEach((row) => {
+      if (row._id === "income") totalIncome = row.total;
+      if (row._id === "expense") totalExpense = row.total;
     });
 
     const balance = totalIncome - totalExpense;
 
-    return res.json({
+    const recent = await Transaction.find({ user: userId })
+      .sort({ date: -1, createdAt: -1 })
+      .limit(5)
+      .populate("category");
+
+    res.json({
+      balance,
       totalIncome,
       totalExpense,
-      balance
+      recentTransactions: recent,
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Breakdown chi tiêu theo category cho chart
+export async function getExpenseBreakdown(req, res, next) {
+  try {
+    const userId = req.userId;
+
+    const result = await Transaction.aggregate([
+      {
+        $match: {
+          user: new Transaction().schema.path("user").cast(userId),
+          type: "expense",
+        },
+      },
+      {
+        $group: {
+          _id: "$category",
+          totalAmount: { $sum: "$amount" },
+        },
+      },
+    ]);
+
+    res.json(result);
   } catch (err) {
     next(err);
   }
