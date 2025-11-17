@@ -1,71 +1,22 @@
 // src/controllers/transaction.controller.js
-import mongoose from "mongoose";
 import Transaction from "../models/Transaction.js";
-
-// Lấy danh sách giao dịch với filter
-export async function getTransactions(req, res, next) {
-  try {
-    const userId = req.userId;
-    const { type, category, q, dateFrom, dateTo } = req.query;
-
-    const filter = { user: userId };
-
-    if (type && ["income", "expense"].includes(type)) {
-      filter.type = type;
-    }
-
-    if (category) {
-      filter.category = category;
-    }
-
-    if (q) {
-      filter.note = { $regex: q, $options: "i" };
-    }
-
-    if (dateFrom || dateTo) {
-      filter.date = {};
-      if (dateFrom) {
-        filter.date.$gte = new Date(dateFrom);
-      }
-      if (dateTo) {
-        filter.date.$lte = new Date(dateTo);
-      }
-    }
-
-    const transactions = await Transaction.find(filter)
-      .sort({ date: -1, createdAt: -1 })
-      .lean();
-
-    res.json(transactions);
-  } catch (err) {
-    next(err);
-  }
-}
 
 // Tạo giao dịch mới
 export async function createTransaction(req, res, next) {
   try {
-    const userId = req.userId;
-    const { type, category, note, amount, date } = req.body;
+    const { type, categoryId, amount, note, date } = req.body;
 
-    if (!type || !["income", "expense"].includes(type)) {
-      return res.status(400).json({ message: "Loại giao dịch không hợp lệ" });
-    }
-
-    const numAmount = Number(amount);
-    if (!Number.isFinite(numAmount) || numAmount <= 0) {
-      return res
-        .status(400)
-        .json({ message: "Số tiền phải là số dương hợp lệ" });
+    if (!type || !amount) {
+      return res.status(400).json({ message: "Thiếu loại giao dịch hoặc số tiền" });
     }
 
     const transaction = await Transaction.create({
-      user: userId,
+      user: req.userId,
       type,
-      category: category || null,
-      note: note || "",
-      amount: numAmount,
-      date: date ? new Date(date) : undefined,
+      category: categoryId || null,
+      amount,
+      note,
+      date: date ? new Date(date) : new Date(),
     });
 
     res.status(201).json(transaction);
@@ -74,94 +25,48 @@ export async function createTransaction(req, res, next) {
   }
 }
 
-// Cập nhật giao dịch
-export async function updateTransaction(req, res, next) {
+// Lấy danh sách giao dịch với filter
+export async function getTransactions(req, res, next) {
   try {
-    const userId = req.userId;
-    const { id } = req.params;
-    const { type, category, note, amount, date } = req.body;
+    const { type, categoryId, from, to, search } = req.query;
 
-    const update = {};
+    const filter = { user: req.userId };
 
-    if (type) {
-      if (!["income", "expense"].includes(type)) {
-        return res
-          .status(400)
-          .json({ message: "Loại giao dịch không hợp lệ" });
-      }
-      update.type = type;
+    if (type && ["income", "expense"].includes(type)) {
+      filter.type = type;
     }
 
-    if (category !== undefined) {
-      update.category = category || null;
+    if (categoryId) {
+      filter.category = categoryId;
     }
 
-    if (note !== undefined) {
-      update.note = note;
+    if (from || to) {
+      filter.date = {};
+      if (from) filter.date.$gte = new Date(from);
+      if (to) filter.date.$lte = new Date(to);
     }
 
-    if (amount !== undefined) {
-      const numAmount = Number(amount);
-      if (!Number.isFinite(numAmount) || numAmount <= 0) {
-        return res
-          .status(400)
-          .json({ message: "Số tiền phải là số dương hợp lệ" });
-      }
-      update.amount = numAmount;
+    if (search) {
+      filter.note = { $regex: search, $options: "i" };
     }
 
-    if (date) {
-      update.date = new Date(date);
-    }
+    const transactions = await Transaction.find(filter)
+      .sort({ date: -1, createdAt: -1 })
+      .populate("category");
 
-    const transaction = await Transaction.findOneAndUpdate(
-      { _id: id, user: userId },
-      update,
-      { new: true }
-    );
-
-    if (!transaction) {
-      return res.status(404).json({ message: "Không tìm thấy giao dịch" });
-    }
-
-    res.json(transaction);
+    res.json(transactions);
   } catch (err) {
     next(err);
   }
 }
 
-// Xóa giao dịch
-export async function deleteTransaction(req, res, next) {
-  try {
-    const userId = req.userId;
-    const { id } = req.params;
-
-    const deleted = await Transaction.findOneAndDelete({
-      _id: id,
-      user: userId,
-    });
-
-    if (!deleted) {
-      return res.status(404).json({ message: "Không tìm thấy giao dịch" });
-    }
-
-    res.json({ message: "Đã xóa giao dịch" });
-  } catch (err) {
-    next(err);
-  }
-}
-
-// Tóm tắt: tổng thu, tổng chi, số dư
+// Tổng quan cho Dashboard
 export async function getSummary(req, res, next) {
   try {
     const userId = req.userId;
 
-    const result = await Transaction.aggregate([
-      {
-        $match: {
-          user: new mongoose.Types.ObjectId(userId),
-        },
-      },
+    const agg = await Transaction.aggregate([
+      { $match: { user: new Transaction().schema.path("user").cast(userId) } },
       {
         $group: {
           _id: "$type",
@@ -173,30 +78,38 @@ export async function getSummary(req, res, next) {
     let totalIncome = 0;
     let totalExpense = 0;
 
-    result.forEach((row) => {
+    agg.forEach((row) => {
       if (row._id === "income") totalIncome = row.total;
       if (row._id === "expense") totalExpense = row.total;
     });
 
+    const balance = totalIncome - totalExpense;
+
+    const recent = await Transaction.find({ user: userId })
+      .sort({ date: -1, createdAt: -1 })
+      .limit(5)
+      .populate("category");
+
     res.json({
+      balance,
       totalIncome,
       totalExpense,
-      balance: totalIncome - totalExpense,
+      recentTransactions: recent,
     });
   } catch (err) {
     next(err);
   }
 }
 
-// Thống kê chi tiêu theo category (cho biểu đồ doughnut)
-export async function getExpenseStatsByCategory(req, res, next) {
+// Breakdown chi tiêu theo category cho chart
+export async function getExpenseBreakdown(req, res, next) {
   try {
     const userId = req.userId;
 
     const result = await Transaction.aggregate([
       {
         $match: {
-          user: new mongoose.Types.ObjectId(userId),
+          user: new Transaction().schema.path("user").cast(userId),
           type: "expense",
         },
       },
@@ -206,17 +119,9 @@ export async function getExpenseStatsByCategory(req, res, next) {
           totalAmount: { $sum: "$amount" },
         },
       },
-      {
-        $sort: { totalAmount: -1 },
-      },
     ]);
 
-    const data = result.map((row) => ({
-      category: row._id || "Uncategorized",
-      totalAmount: row.totalAmount,
-    }));
-
-    res.json(data);
+    res.json(result);
   } catch (err) {
     next(err);
   }
