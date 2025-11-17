@@ -1,4 +1,3 @@
-// src/controllers/auth.controller.js
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
@@ -88,6 +87,34 @@ export async function getMe(req, res, next) {
       return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
     res.json(user);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// --- [MỚI] Hàm Reset Password giả lập ---
+export async function resetPasswordMock(req, res, next) {
+  try {
+    const { email, newPassword } = req.body;
+
+    if (!email || !newPassword) {
+      return res.status(400).json({ message: "Vui lòng nhập email và mật khẩu mới" });
+    }
+
+    // 1. Tìm user theo email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "Email không tồn tại trong hệ thống" });
+    }
+
+    // 2. Mã hóa mật khẩu mới
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    // 3. Cập nhật và lưu
+    user.passwordHash = passwordHash;
+    await user.save();
+
+    res.json({ message: "Đổi mật khẩu thành công! Hãy đăng nhập lại." });
   } catch (err) {
     next(err);
   }
