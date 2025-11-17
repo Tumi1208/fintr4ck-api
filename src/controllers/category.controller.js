@@ -8,67 +8,104 @@ const getUserId = (req) => req.userId || (req.user && req.user._id);
 export async function getCategories(req, res, next) {
   try {
     const userId = getUserId(req);
-    console.log("🔍 Đang tìm category cho User ID:", userId);
-
+    // Sắp xếp theo tên A-Z
     const categories = await Category.find({ user: userId }).sort({ name: 1 });
-    
-    console.log(`✅ Tìm thấy ${categories.length} danh mục.`);
     res.json(categories);
   } catch (err) {
-    console.error("❌ Lỗi khi lấy danh sách category:", err);
+    console.error(" Lỗi lấy danh sách category:", err);
     next(err);
   }
 }
 
 /**
  * POST /api/v1/categories
+ * (ĐÃ SỬA: Thêm icon vào để lưu)
  */
 export async function createCategory(req, res, next) {
   try {
     const userId = getUserId(req);
-    let { name, type } = req.body;
-
-    console.log("📩 Đang nhận yêu cầu tạo Category:", req.body);
+    // [FIX] Lấy thêm biến 'icon' từ req.body
+    let { name, type, icon } = req.body;
 
     if (!name || !type) {
-      console.log("⚠️ Thiếu tên hoặc type");
-      return res.status(400).json({ message: "Thiếu thông tin" });
+      return res.status(400).json({ message: "Thiếu thông tin name hoặc type" });
     }
 
-    // FIX QUAN TRỌNG: Chuyển hết về chữ thường để tránh lỗi validation
+    // Chuẩn hóa type về chữ thường
     type = type.toLowerCase(); 
-    console.log("🛠️ Đã chuẩn hóa type thành:", type);
 
-    // Kiểm tra trùng
+    // Kiểm tra trùng tên
     const existing = await Category.findOne({ user: userId, name, type });
     if (existing) {
-      console.log("⚠️ Danh mục đã tồn tại:", existing);
       return res.status(400).json({ message: "Danh mục này đã tồn tại" });
     }
 
-    // Tạo mới
+    // Tạo mới với icon
     const category = await Category.create({
       user: userId,
       name,
-      type
+      type,
+      icon: icon || "" // [FIX] Lưu icon, nếu không có thì để rỗng
     });
 
-    console.log("✅ Đã tạo thành công:", category);
+    console.log(" Đã tạo category có icon:", category);
     res.status(201).json(category);
   } catch (err) {
-    console.error("❌ Lỗi KHÔNG LƯU ĐƯỢC category:", err);
-    // Trả về lỗi chi tiết để Frontend hiển thị (nếu có)
-    res.status(500).json({ message: err.message });
+    console.error(" Lỗi tạo category:", err);
+    next(err);
   }
 }
 
-// (Các hàm update/delete giữ nguyên hoặc copy lại từ file cũ)
-export async function updateCategory(req, res, next) { /* ... */ }
-export async function deleteCategory(req, res, next) { /* ... */ }
+/**
+ * PUT /api/v1/categories/:id
+ * (ĐÃ SỬA: Cho phép update icon)
+ */
+export async function updateCategory(req, res, next) {
+  try {
+    const userId = getUserId(req);
+    const { id } = req.params;
+    // [FIX] Lấy thêm icon để update
+    const { name, type, icon } = req.body;
+
+    const category = await Category.findOneAndUpdate(
+      { _id: id, user: userId },
+      { name, type, icon }, // [FIX] Cập nhật trường icon
+      { new: true } // Trả về dữ liệu mới sau khi sửa
+    );
+
+    if (!category) {
+      return res.status(404).json({ message: "Không tìm thấy danh mục" });
+    }
+
+    res.json(category);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * DELETE /api/v1/categories/:id
+ */
+export async function deleteCategory(req, res, next) {
+  try {
+    const userId = getUserId(req);
+    const { id } = req.params;
+
+    const deleted = await Category.findOneAndDelete({ _id: id, user: userId });
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Không tìm thấy danh mục" });
+    }
+
+    res.json({ message: "Đã xóa danh mục" });
+  } catch (err) {
+    next(err);
+  }
+}
 
 export default {
   getCategories,
   createCategory,
-  updateCategory, // Nhớ export đầy đủ
+  updateCategory,
   deleteCategory
 };
