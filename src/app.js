@@ -1,3 +1,4 @@
+// src/app.js
 // File chính khởi tạo server Express
 
 import express from "express";
@@ -9,43 +10,47 @@ import { swaggerUi, swaggerSpec } from "./config/swagger.js";
 import authRoutes from "./routes/auth.routes.js";
 import transactionRoutes from "./routes/transaction.routes.js";
 import healthRoutes from "./routes/health.routes.js";
+import categoryRoutes from "./routes/category.routes.js";
+import userRoutes from "./routes/user.routes.js";
+import reportRoutes from "./routes/report.routes.js";
 import { errorHandler } from "./middleware/error.js";
 
 dotenv.config();
 
 const app = express();
 
-// Cấu hình CORS để FE gọi được API
+// CORS để FE gọi được API
 app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      process.env.CLIENT_ORIGIN // sau này là domain FE khi deploy
+      process.env.CLIENT_ORIGIN, // sau này deploy FE
     ].filter(Boolean),
-    credentials: true
+    credentials: true,
   })
 );
 
-// Middleware chung
 app.use(morgan("dev"));
 app.use(express.json());
 
-// Route health đơn giản để kiểm tra server
+// Health check
 app.use("/api/v1/health", healthRoutes);
 
-// Swagger UI để xem tài liệu API
+// Swagger UI
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Routes chính
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/transactions", transactionRoutes);
+app.use("/api/v1/categories", categoryRoutes);
+app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/reports", reportRoutes);
 
 // Middleware xử lý lỗi chung
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 4000;
 
-// Kết nối DB rồi mới start server
 connectDB()
   .then(() => {
     console.log("Kết nối MongoDB thành công!");
