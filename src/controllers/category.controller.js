@@ -1,34 +1,50 @@
-// src/controllers/category.controller.js
 import Category from "../models/Category.js";
-import Transaction from "../models/Transaction.js";
 
-// Lấy tất cả category của user
+// Helper để lấy userId an toàn (ưu tiên req.userId từ middleware)
+const getUserId = (req) => {
+  return req.userId || (req.user && req.user._id);
+};
+
+/**
+ * GET /api/v1/categories
+ * Lấy danh sách danh mục của User hiện tại
+ */
 export async function getCategories(req, res, next) {
   try {
-    const categories = await Category.find({ user: req.userId }).sort({
-      type: 1,
-      name: 1,
-    });
+    const userId = getUserId(req);
+    
+    // Tìm category của user này, sắp xếp theo tên A-Z
+    const categories = await Category.find({ user: userId }).sort({ name: 1 });
+    
     res.json(categories);
   } catch (err) {
     next(err);
   }
 }
 
-// Tạo category
+/**
+ * POST /api/v1/categories
+ * Tạo danh mục mới
+ */
 export async function createCategory(req, res, next) {
   try {
-    const { name, type, icon } = req.body;
+    const userId = getUserId(req);
+    const { name, type } = req.body; // type: 'income' hoặc 'expense'
 
     if (!name || !type) {
       return res.status(400).json({ message: "Thiếu tên hoặc loại danh mục" });
     }
 
+    // Kiểm tra xem danh mục đã tồn tại chưa (trong phạm vi user đó)
+    const existing = await Category.findOne({ user: userId, name, type });
+    if (existing) {
+      return res.status(400).json({ message: "Danh mục này đã tồn tại" });
+    }
+
     const category = await Category.create({
-      user: req.userId,
+      user: userId,
       name,
-      type,
-      icon: icon || "",
+      type
     });
 
     res.status(201).json(category);
@@ -37,16 +53,20 @@ export async function createCategory(req, res, next) {
   }
 }
 
-// Cập nhật category
+/**
+ * PUT /api/v1/categories/:id
+ * Cập nhật danh mục
+ */
 export async function updateCategory(req, res, next) {
   try {
+    const userId = getUserId(req);
     const { id } = req.params;
-    const { name, type, icon } = req.body;
+    const { name, type } = req.body;
 
     const category = await Category.findOneAndUpdate(
-      { _id: id, user: req.userId },
-      { name, type, icon },
-      { new: true }
+      { _id: id, user: userId },
+      { name, type },
+      { new: true } // Trả về document mới sau khi update
     );
 
     if (!category) {
@@ -59,28 +79,30 @@ export async function updateCategory(req, res, next) {
   }
 }
 
-// Xoá category
+/**
+ * DELETE /api/v1/categories/:id
+ * Xóa danh mục
+ */
 export async function deleteCategory(req, res, next) {
   try {
+    const userId = getUserId(req);
     const { id } = req.params;
 
-    const category = await Category.findOneAndDelete({
-      _id: id,
-      user: req.userId,
-    });
+    const deleted = await Category.findOneAndDelete({ _id: id, user: userId });
 
-    if (!category) {
+    if (!deleted) {
       return res.status(404).json({ message: "Không tìm thấy danh mục" });
     }
 
-    // Option: có thể set category của transaction liên quan về null
-    await Transaction.updateMany(
-      { user: req.userId, category: id },
-      { $set: { category: null } }
-    );
-
-    res.json({ message: "Đã xoá danh mục" });
+    res.json({ message: "Đã xóa danh mục" });
   } catch (err) {
     next(err);
   }
 }
+
+export default {
+  getCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory
+};

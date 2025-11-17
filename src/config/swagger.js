@@ -69,7 +69,7 @@ export const swaggerSpec = {
     { name: "Reports", description: "Báo cáo, thống kê" },
   ],
   paths: {
-    // System 
+    // ========= System =========
     "/health": {
       get: {
         tags: ["System"],
@@ -82,7 +82,7 @@ export const swaggerSpec = {
       },
     },
 
-    //  Auth 
+    // ========= Auth =========
     "/auth/register": {
       post: {
         tags: ["Auth"],
@@ -158,7 +158,7 @@ export const swaggerSpec = {
       },
     },
 
-    //  Transactions 
+    // ========= Transactions =========
     "/transactions": {
       get: {
         tags: ["Transactions"],
@@ -241,7 +241,7 @@ export const swaggerSpec = {
       },
     },
 
-    //  Categories 
+    // ========= Categories =========
     "/categories": {
       get: {
         tags: ["Categories"],
@@ -335,7 +335,7 @@ export const swaggerSpec = {
       },
     },
 
-    //  Users (Settings) 
+    // ========= Users (Settings) =========
     "/users/profile": {
       put: {
         tags: ["Users"],
@@ -396,7 +396,7 @@ export const swaggerSpec = {
       },
     },
 
-    //  Reports 
+    // ========= Reports =========
     "/reports/expense-breakdown": {
       get: {
         tags: ["Reports"],
