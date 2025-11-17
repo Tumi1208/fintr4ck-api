@@ -16,26 +16,23 @@ const transactionSchema = new mongoose.Schema(
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
-      default: null,
-    },
-    note: {
-      type: String,
-      default: "",
-      trim: true,
     },
     amount: {
       type: Number,
       required: true,
       min: 0,
     },
+    note: {
+      type: String,
+      trim: true,
+    },
     date: {
       type: Date,
+      required: true,
       default: Date.now,
     },
   },
   { timestamps: true }
 );
 
-const Transaction = mongoose.model("Transaction", transactionSchema);
-
-export default Transaction;
+export default mongoose.model("Transaction", transactionSchema);

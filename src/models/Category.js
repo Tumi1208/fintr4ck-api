@@ -18,10 +18,10 @@ const categorySchema = new mongoose.Schema(
       enum: ["income", "expense"],
       required: true,
     },
-    // icon đơn giản là 1 string, FE muốn dùng emoji gì thì lưu string đó
+    // Sau này có thể dùng để lưu icon name (heroicons, font-awesome, ...).
     icon: {
       type: String,
-      default: "💰",
+      trim: true,
     },
   },
   { timestamps: true }
