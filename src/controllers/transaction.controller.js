@@ -1,48 +1,117 @@
+// src/controllers/transaction.controller.js
 import mongoose from "mongoose";
 import Transaction from "../models/Transaction.js";
 
 const getUserId = (req) => req.userId || (req.user && req.user._id);
 
+// --- [HÀM TÌM KIẾM NÂNG CAO] ---
 export async function getTransactions(req, res, next) {
   try {
     const userId = getUserId(req);
-    const { type, categoryId, from, to, search, limit } = req.query;
+    const { type, categoryId, search, limit } = req.query;
+    const userObjectId = new mongoose.Types.ObjectId(userId);
 
-    const query = { user: userId };
+    // Pipeline xử lý dữ liệu từng bước
+    const pipeline = [
+      // 1. Lọc theo User trước
+      { $match: { user: userObjectId } },
 
+      // 2. Nối bảng Category vào để lấy tên (Lookup)
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category",
+          foreignField: "_id",
+          as: "categoryInfo",
+        },
+      },
+      // Làm phẳng mảng categoryInfo (để dễ truy cập .name)
+      { 
+        $unwind: { 
+          path: "$categoryInfo", 
+          preserveNullAndEmptyArrays: true // Giữ lại giao dịch không có category
+        } 
+      },
+
+      // 3. Tạo thêm field "dateString" để tìm kiếm ngày tháng (dạng DD/MM/YYYY)
+      {
+        $addFields: {
+          dateString: { 
+            $dateToString: { format: "%d/%m/%Y", date: "$date" } 
+          }
+        }
+      }
+    ];
+
+    // 4. Chuẩn bị điều kiện lọc
+    const matchStage = {};
+
+    // Lọc theo Type
     if (type && type !== "all") {
-      query.type = type.toLowerCase();
+      matchStage.type = type.toLowerCase();
     }
 
+    // Lọc theo Category ID
     if (categoryId) {
-      query.category = categoryId;
+      matchStage.category = new mongoose.Types.ObjectId(categoryId);
     }
 
-    if (from || to) {
-      query.date = {};
-      if (from) query.date.$gte = new Date(from);
-      if (to) query.date.$lte = new Date(to);
+    // 5. TÌM KIẾM ĐA NĂNG (Search All)
+    if (search && search.trim() !== "") {
+      const regex = { $regex: search, $options: "i" }; // Không phân biệt hoa thường
+      const isNumber = !isNaN(search); // Kiểm tra xem có phải số không
+
+      const orConditions = [
+        { note: regex },                    // Tìm trong Ghi chú
+        { "categoryInfo.name": regex },     // Tìm trong Tên danh mục
+        { dateString: regex }               // Tìm theo Ngày (vd: "17/11")
+      ];
+
+      if (isNumber) {
+        orConditions.push({ amount: Number(search) }); // Tìm theo Số tiền chính xác
+      }
+
+      matchStage.$or = orConditions;
     }
 
-    if (search) {
-      query.note = { $regex: search, $options: "i" };
-    }
+    // Đẩy điều kiện lọc vào pipeline
+    pipeline.push({ $match: matchStage });
 
-    let mongoQuery = Transaction.find(query)
-      .sort({ date: -1 })
-      .populate("category");
-
+    // 6. Sắp xếp (Mới nhất lên đầu)
+    pipeline.push({ $sort: { date: -1 } });
+    
+    // Giới hạn số lượng (nếu có)
     if (limit) {
-      mongoQuery = mongoQuery.limit(Number(limit));
+      pipeline.push({ $limit: Number(limit) });
     }
 
-    const transactions = await mongoQuery;
+    // 7. Project (Định hình dữ liệu trả về cho Frontend)
+    pipeline.push({
+      $project: {
+        _id: 1,
+        date: 1,
+        type: 1,
+        amount: 1,
+        note: 1,
+        // Trả về cấu trúc category giống như populate cũ
+        category: {
+          _id: "$categoryInfo._id",
+          name: "$categoryInfo.name",
+          icon: "$categoryInfo.icon",
+          type: "$categoryInfo.type"
+        }
+      }
+    });
+
+    const transactions = await Transaction.aggregate(pipeline);
 
     res.json(transactions);
   } catch (err) {
     next(err);
   }
 }
+
+// --- CÁC HÀM CRUD CƠ BẢN (GIỮ NGUYÊN) ---
 
 export async function createTransaction(req, res, next) {
   try {
@@ -52,7 +121,6 @@ export async function createTransaction(req, res, next) {
     if (!type || !["income", "expense"].includes(type.toLowerCase())) {
       return res.status(400).json({ message: "Loại giao dịch không hợp lệ" });
     }
-
     if (amount == null || Number.isNaN(Number(amount))) {
       return res.status(400).json({ message: "Số tiền không hợp lệ" });
     }
@@ -64,14 +132,10 @@ export async function createTransaction(req, res, next) {
       note: note || "",
       date: date ? new Date(date) : new Date(),
     };
-
-    if (categoryId) {
-      data.category = categoryId;
-    }
+    if (categoryId) data.category = categoryId;
 
     const transaction = await Transaction.create(data);
     const populated = await transaction.populate("category");
-
     res.status(201).json(populated);
   } catch (err) {
     next(err);
@@ -85,34 +149,16 @@ export async function updateTransaction(req, res, next) {
     const { type, categoryId, amount, note, date } = req.body;
 
     const transaction = await Transaction.findOne({ _id: id, user: userId });
+    if (!transaction) return res.status(404).json({ message: "Không tìm thấy giao dịch" });
 
-    if (!transaction) {
-      return res.status(404).json({ message: "Không tìm thấy giao dịch" });
-    }
-
-    if (type && ["income", "expense"].includes(type.toLowerCase())) {
-      transaction.type = type.toLowerCase();
-    }
-
-    if (amount != null && !Number.isNaN(Number(amount))) {
-      transaction.amount = Number(amount);
-    }
-
-    if (note !== undefined) {
-      transaction.note = note;
-    }
-
-    if (date) {
-      transaction.date = new Date(date);
-    }
-
-    if (categoryId !== undefined) {
-      transaction.category = categoryId || null;
-    }
+    if (type) transaction.type = type.toLowerCase();
+    if (amount != null) transaction.amount = Number(amount);
+    if (note !== undefined) transaction.note = note;
+    if (date) transaction.date = new Date(date);
+    if (categoryId !== undefined) transaction.category = categoryId || null;
 
     await transaction.save();
     const populated = await transaction.populate("category");
-
     res.json(populated);
   } catch (err) {
     next(err);
@@ -122,22 +168,15 @@ export async function updateTransaction(req, res, next) {
 export async function deleteTransaction(req, res, next) {
   try {
     const userId = getUserId(req);
-    const { id } = req.params;
-
-    const deleted = await Transaction.findOneAndDelete({
-      _id: id,
-      user: userId,
-    });
-
-    if (!deleted) {
-      return res.status(404).json({ message: "Không tìm thấy giao dịch" });
-    }
-
+    const deleted = await Transaction.findOneAndDelete({ _id: req.params.id, user: userId });
+    if (!deleted) return res.status(404).json({ message: "Không tìm thấy giao dịch" });
     res.json({ message: "Đã xóa giao dịch" });
   } catch (err) {
     next(err);
   }
 }
+
+// --- CÁC HÀM DASHBOARD (GIỮ NGUYÊN LOGIC MỚI NHẤT) ---
 
 export async function getSummary(req, res, next) {
   try {
@@ -146,36 +185,21 @@ export async function getSummary(req, res, next) {
 
     const totals = await Transaction.aggregate([
       { $match: { user: userObjectId } },
-      {
-        $group: {
-          _id: "$type",
-          total: { $sum: "$amount" },
-        },
-      },
+      { $group: { _id: "$type", total: { $sum: "$amount" } } },
     ]);
 
     let totalIncome = 0;
     let totalExpense = 0;
-
     for (const item of totals) {
       if (item._id === "income") totalIncome = item.total;
       if (item._id === "expense") totalExpense = item.total;
     }
-
     const currentBalance = totalIncome - totalExpense;
 
-    // Lấy 5 giao dịch gần nhất để hiển thị Dashboard
     const recentTransactions = await Transaction.find({ user: userId })
-      .sort({ date: -1 })
-      .limit(5)
-      .populate("category");
+      .sort({ date: -1 }).limit(5).populate("category");
 
-    res.json({
-      currentBalance,
-      totalIncome,
-      totalExpense,
-      recentTransactions,
-    });
+    res.json({ currentBalance, totalIncome, totalExpense, recentTransactions });
   } catch (err) {
     next(err);
   }
@@ -190,17 +214,12 @@ export async function getExpenseBreakdown(req, res, next) {
       {
         $match: {
           user: userObjectId,
-          // ĐÃ XÓA DÒNG: type: "expense" --> Để lấy cả Income và Expense
+          // Đã xóa type: 'expense' để lấy cả Income
           category: { $ne: null },
         },
       },
       {
-        $lookup: {
-          from: "categories",
-          localField: "category",
-          foreignField: "_id",
-          as: "categoryInfo",
-        },
+        $lookup: { from: "categories", localField: "category", foreignField: "_id", as: "categoryInfo" },
       },
       { $unwind: "$categoryInfo" },
       {
@@ -213,12 +232,7 @@ export async function getExpenseBreakdown(req, res, next) {
       { $sort: { amount: -1 } },
     ]);
 
-    const data = rows.map((row) => ({
-      name: row.name,
-      amount: row.amount,
-      total: row.amount, // Thêm trường này để frontend dễ đọc
-    }));
-
+    const data = rows.map((row) => ({ name: row.name, amount: row.amount, total: row.amount }));
     res.json(data);
   } catch (err) {
     next(err);
