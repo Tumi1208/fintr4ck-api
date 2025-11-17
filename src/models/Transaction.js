@@ -1,3 +1,4 @@
+// src/models/Transaction.js
 // Mô hình Transaction để lưu chi tiêu / thu nhập
 import mongoose from "mongoose";
 
@@ -7,6 +8,7 @@ const transactionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
     type: {
       type: String,
@@ -29,10 +31,14 @@ const transactionSchema = new mongoose.Schema(
     date: {
       type: Date,
       required: true,
-      default: Date.now,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-export default mongoose.model("Transaction", transactionSchema);
+transactionSchema.index({ user: 1, date: -1 });
+
+const Transaction = mongoose.model("Transaction", transactionSchema);
+export default Transaction;

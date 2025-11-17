@@ -7,6 +7,7 @@ const categorySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
     name: {
       type: String,
@@ -18,13 +19,18 @@ const categorySchema = new mongoose.Schema(
       enum: ["income", "expense"],
       required: true,
     },
-    // Sau này có thể dùng để lưu icon name (heroicons, font-awesome, ...).
     icon: {
       type: String,
       trim: true,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-export default mongoose.model("Category", categorySchema);
+// Mỗi user không được trùng tên + type
+categorySchema.index({ user: 1, name: 1, type: 1 }, { unique: true });
+
+const Category = mongoose.model("Category", categorySchema);
+export default Category;
