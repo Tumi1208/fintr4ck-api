@@ -1,18 +1,24 @@
 // Mô hình User tối giản cho đăng ký/đăng nhập
-
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
-    name: { type: String, trim: true },
+    name: {
+      type: String,
+      trim: true,
+    },
     email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
-      trim: true
+      trim: true,
     },
-    passwordHash: { type: String, required: true }
+    // Lưu mật khẩu đã băm
+    passwordHash: {
+      type: String,
+      required: true,
+    },
   },
   { timestamps: true }
 );
