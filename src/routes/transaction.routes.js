@@ -1,28 +1,23 @@
 // src/routes/transaction.routes.js
-import express from "express";
+import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import {
-  getTransactions,
   createTransaction,
-  updateTransaction,
-  deleteTransaction,
+  getTransactions,
   getSummary,
-  getExpenseStatsByCategory,
 } from "../controllers/transaction.controller.js";
 
-const router = express.Router();
+const router = Router();
 
-// yêu cầu đăng nhập cho toàn bộ transaction API
 router.use(requireAuth);
 
-// Summary & chart data
-router.get("/summary", getSummary);
-router.get("/stats-by-category", getExpenseStatsByCategory);
-
-// CRUD chính
+// Danh sách + filter
 router.get("/", getTransactions);
+
+// Tạo giao dịch mới
 router.post("/", createTransaction);
-router.put("/:id", updateTransaction);
-router.delete("/:id", deleteTransaction);
+
+// Summary cho Dashboard
+router.get("/summary", getSummary);
 
 export default router;

@@ -1,5 +1,5 @@
 // src/routes/category.routes.js
-import express from "express";
+import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import {
   getCategories,
@@ -8,9 +8,8 @@ import {
   deleteCategory,
 } from "../controllers/category.controller.js";
 
-const router = express.Router();
+const router = Router();
 
-// tất cả route dưới đây đều yêu cầu đăng nhập
 router.use(requireAuth);
 
 router.get("/", getCategories);
