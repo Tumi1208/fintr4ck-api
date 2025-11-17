@@ -13,14 +13,14 @@ const transactionSchema = new mongoose.Schema(
       enum: ["income", "expense"],
       required: true,
     },
-    // Lưu tên category (text) cho đơn giản
     category: {
-      type: String,
-      trim: true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
       default: null,
     },
     note: {
       type: String,
+      default: "",
       trim: true,
     },
     amount: {
@@ -36,4 +36,6 @@ const transactionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Transaction", transactionSchema);
+const Transaction = mongoose.model("Transaction", transactionSchema);
+
+export default Transaction;
