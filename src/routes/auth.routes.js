@@ -1,18 +1,23 @@
-// Các route liên quan tới đăng ký / đăng nhập
-
-import express from "express";
+// src/routes/auth.routes.js
+import { Router } from "express";
 import { register, login, getMe } from "../controllers/auth.controller.js";
 import { requireAuth } from "../middleware/auth.js";
 
-const router = express.Router();
+const router = Router();
 
-// Đăng ký
+/**
+ * @route POST /api/v1/auth/register
+ */
 router.post("/register", register);
 
-// Đăng nhập
+/**
+ * @route POST /api/v1/auth/login
+ */
 router.post("/login", login);
 
-// Lấy thông tin user hiện tại
+/**
+ * @route GET /api/v1/auth/me
+ */
 router.get("/me", requireAuth, getMe);
 
 export default router;
