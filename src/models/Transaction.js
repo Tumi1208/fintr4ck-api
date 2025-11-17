@@ -1,5 +1,4 @@
 // src/models/Transaction.js
-// Mô hình Transaction để lưu chi tiêu / thu nhập
 import mongoose from "mongoose";
 
 const transactionSchema = new mongoose.Schema(
@@ -8,37 +7,33 @@ const transactionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
     },
     type: {
       type: String,
       enum: ["income", "expense"],
       required: true,
     },
+    // Lưu tên category (text) cho đơn giản
     category: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Category",
+      type: String,
+      trim: true,
+      default: null,
+    },
+    note: {
+      type: String,
+      trim: true,
     },
     amount: {
       type: Number,
       required: true,
       min: 0,
     },
-    note: {
-      type: String,
-      trim: true,
-    },
     date: {
       type: Date,
-      required: true,
+      default: Date.now,
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-transactionSchema.index({ user: 1, date: -1 });
-
-const Transaction = mongoose.model("Transaction", transactionSchema);
-export default Transaction;
+export default mongoose.model("Transaction", transactionSchema);
