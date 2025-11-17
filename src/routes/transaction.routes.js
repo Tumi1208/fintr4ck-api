@@ -7,25 +7,22 @@ import {
   updateTransaction,
   deleteTransaction,
   getSummary,
+  getExpenseStatsByCategory,
 } from "../controllers/transaction.controller.js";
 
 const router = express.Router();
 
+// yêu cầu đăng nhập cho toàn bộ transaction API
 router.use(requireAuth);
 
-// GET /api/v1/transactions?...
-router.get("/", getTransactions);
-
-// POST /api/v1/transactions
-router.post("/", createTransaction);
-
-// GET /api/v1/transactions/summary
+// Summary & chart data
 router.get("/summary", getSummary);
+router.get("/stats-by-category", getExpenseStatsByCategory);
 
-// PUT /api/v1/transactions/:id
+// CRUD chính
+router.get("/", getTransactions);
+router.post("/", createTransaction);
 router.put("/:id", updateTransaction);
-
-// DELETE /api/v1/transactions/:id
 router.delete("/:id", deleteTransaction);
 
 export default router;
