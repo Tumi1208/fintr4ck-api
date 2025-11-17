@@ -4,37 +4,44 @@ import User from "../models/User.js";
 import Transaction from "../models/Transaction.js";
 import Category from "../models/Category.js";
 
-// Cập nhật tên hiển thị
-export async function updateProfile(req, res, next) {
+export async function updateProfile(req, res) {
   try {
+    const userId = req.userId;
     const { name } = req.body;
+
     if (!name) {
       return res.status(400).json({ message: "Tên không được để trống" });
     }
 
     const user = await User.findByIdAndUpdate(
-      req.userId,
-      { name },
+      userId,
+      { name: name.trim() },
       { new: true }
     ).select("-passwordHash");
 
-    res.json(user);
+    res.json({ user });
   } catch (err) {
-    next(err);
+    console.error("Lỗi server:", err);
+    res.status(500).json({ message: "Đã có lỗi xảy ra trên server" });
   }
 }
 
-// Đổi mật khẩu
-export async function changePassword(req, res, next) {
+export async function changePassword(req, res) {
   try {
+    const userId = req.userId;
     const { currentPassword, newPassword } = req.body;
+
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: "Thiếu mật khẩu hiện tại hoặc mật khẩu mới" });
+      return res.status(400).json({ message: "Thiếu mật khẩu" });
     }
 
-    const user = await User.findById(req.userId);
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "Mật khẩu mới phải ít nhất 6 ký tự" });
+    }
+
+    const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+      return res.status(404).json({ message: "Không tìm thấy user" });
     }
 
     const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
@@ -42,26 +49,31 @@ export async function changePassword(req, res, next) {
       return res.status(400).json({ message: "Mật khẩu hiện tại không đúng" });
     }
 
-    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    const newHash = await bcrypt.hash(newPassword, 10);
+    user.passwordHash = newHash;
     await user.save();
 
     res.json({ message: "Đổi mật khẩu thành công" });
   } catch (err) {
-    next(err);
+    console.error("Lỗi server:", err);
+    res.status(500).json({ message: "Đã có lỗi xảy ra trên server" });
   }
 }
 
-// Xoá tài khoản + dữ liệu liên quan
-export async function deleteMe(req, res, next) {
+export async function deleteMe(req, res) {
   try {
     const userId = req.userId;
 
-    await Transaction.deleteMany({ user: userId });
-    await Category.deleteMany({ user: userId });
-    await User.findByIdAndDelete(userId);
+    // Xoá data liên quan
+    await Promise.all([
+      Transaction.deleteMany({ user: userId }),
+      Category.deleteMany({ user: userId }),
+      User.findByIdAndDelete(userId),
+    ]);
 
-    res.json({ message: "Tài khoản và dữ liệu liên quan đã được xoá" });
+    res.json({ message: "Đã xoá tài khoản và dữ liệu liên quan" });
   } catch (err) {
-    next(err);
+    console.error("Lỗi server:", err);
+    res.status(500).json({ message: "Đã có lỗi xảy ra trên server" });
   }
 }
