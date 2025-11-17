@@ -1,90 +1,80 @@
 // src/controllers/category.controller.js
 import Category from "../models/Category.js";
-import Transaction from "../models/Transaction.js";
 
-export async function getCategories(req, res) {
+export async function getCategories(req, res, next) {
   try {
-    const userId = req.userId;
-    const categories = await Category.find({ user: userId }).sort({ createdAt: 1 });
-    res.json({ categories });
+    const categories = await Category.find({ user: req.userId }).sort({
+      type: 1,
+      name: 1,
+    });
+    res.json(categories);
   } catch (err) {
-    console.error("Lỗi server:", err);
-    res.status(500).json({ message: "Đã có lỗi xảy ra trên server" });
+    next(err);
   }
 }
 
-export async function createCategory(req, res) {
+export async function createCategory(req, res, next) {
   try {
-    const userId = req.userId;
     const { name, type, icon } = req.body;
 
     if (!name || !type) {
-      return res.status(400).json({ message: "Tên và loại danh mục là bắt buộc" });
-    }
-
-    if (!["income", "expense"].includes(type)) {
-      return res.status(400).json({ message: "Loại danh mục không hợp lệ" });
+      return res
+        .status(400)
+        .json({ message: "Tên và loại danh mục là bắt buộc" });
     }
 
     const category = await Category.create({
-      user: userId,
+      user: req.userId,
       name: name.trim(),
       type,
-      icon: icon || "",
+      icon: icon || "💰",
     });
 
-    res.status(201).json({ category });
+    res.status(201).json(category);
   } catch (err) {
-    if (err.code === 11000) {
-      return res.status(400).json({ message: "Danh mục này đã tồn tại" });
-    }
-    console.error("Lỗi server:", err);
-    res.status(500).json({ message: "Đã có lỗi xảy ra trên server" });
+    next(err);
   }
 }
 
-export async function updateCategory(req, res) {
+export async function updateCategory(req, res, next) {
   try {
-    const userId = req.userId;
     const { id } = req.params;
     const { name, type, icon } = req.body;
 
-    const category = await Category.findOne({ _id: id, user: userId });
+    const category = await Category.findOneAndUpdate(
+      { _id: id, user: req.userId },
+      {
+        ...(name && { name: name.trim() }),
+        ...(type && { type }),
+        ...(icon && { icon }),
+      },
+      { new: true }
+    );
+
     if (!category) {
       return res.status(404).json({ message: "Không tìm thấy danh mục" });
     }
 
-    if (name) category.name = name.trim();
-    if (type && ["income", "expense"].includes(type)) category.type = type;
-    if (icon !== undefined) category.icon = icon;
-
-    await category.save();
-    res.json({ category });
+    res.json(category);
   } catch (err) {
-    console.error("Lỗi server:", err);
-    res.status(500).json({ message: "Đã có lỗi xảy ra trên server" });
+    next(err);
   }
 }
 
-export async function deleteCategory(req, res) {
+export async function deleteCategory(req, res, next) {
   try {
-    const userId = req.userId;
     const { id } = req.params;
+    const deleted = await Category.findOneAndDelete({
+      _id: id,
+      user: req.userId,
+    });
 
-    const category = await Category.findOneAndDelete({ _id: id, user: userId });
-    if (!category) {
+    if (!deleted) {
       return res.status(404).json({ message: "Không tìm thấy danh mục" });
     }
 
-    // Có thể optional: clear category khỏi transaction
-    await Transaction.updateMany(
-      { user: userId, category: id },
-      { $unset: { category: "" } }
-    );
-
-    res.json({ message: "Đã xoá danh mục" });
+    res.json({ message: "Đã xóa danh mục" });
   } catch (err) {
-    console.error("Lỗi server:", err);
-    res.status(500).json({ message: "Đã có lỗi xảy ra trên server" });
+    next(err);
   }
 }
