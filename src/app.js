@@ -35,13 +35,24 @@ app.use(
 app.use(morgan("dev"));
 app.use(express.json());
 
+// Trang chủ: Hiển thị thông báo server đang chạy
+app.get("/", (req, res) => {
+  res.send(`
+      <h1 style="text-align: center; margin-top: 50px; font-family: sans-serif;">
+          🚀 Fintr4ck API Server is running!
+      </h1>
+      <p style="text-align: center; font-family: sans-serif;">
+          Access API Docs at: <a href="/docs">/docs</a>
+      </p>
+  `);
+});
+
 // --- [FIX] KHAI BÁO CỨNG ROUTE /ME TẠI ĐÂY ---
 // Đoạn này sẽ chạy trước tất cả các file routes khác để đảm bảo không bị 404
 app.get("/api/v1/auth/me", requireAuth, (req, res, next) => {
     console.log("🔥 Đã kích hoạt Route khẩn cấp: /api/v1/auth/me");
     getMe(req, res, next);
 });
-// ---------------------------------------------
 
 // Swagger UI
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
