@@ -1,23 +1,31 @@
 // src/routes/transaction.routes.js
-import { Router } from "express";
+import express from "express";
 import { requireAuth } from "../middleware/auth.js";
 import {
-  createTransaction,
   getTransactions,
+  createTransaction,
+  updateTransaction,
+  deleteTransaction,
   getSummary,
 } from "../controllers/transaction.controller.js";
 
-const router = Router();
+const router = express.Router();
 
 router.use(requireAuth);
 
-// Danh sách + filter
+// GET /api/v1/transactions?...
 router.get("/", getTransactions);
 
-// Tạo giao dịch mới
+// POST /api/v1/transactions
 router.post("/", createTransaction);
 
-// Summary cho Dashboard
+// GET /api/v1/transactions/summary
 router.get("/summary", getSummary);
+
+// PUT /api/v1/transactions/:id
+router.put("/:id", updateTransaction);
+
+// DELETE /api/v1/transactions/:id
+router.delete("/:id", deleteTransaction);
 
 export default router;
