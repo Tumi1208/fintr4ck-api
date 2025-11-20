@@ -140,6 +140,32 @@ export const swaggerSpec = {
       },
     },
 
+    "/auth/reset-password": {
+      post: {
+        tags: ["Auth"],
+        summary: "Đặt lại mật khẩu (mock/demo)",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["email", "newPassword"],
+                properties: {
+                  email: { type: "string" },
+                  newPassword: { type: "string", minLength: 6 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: "Đặt lại mật khẩu thành công (trả mock)" },
+          400: { description: "Dữ liệu không hợp lệ" },
+        },
+      },
+    },
+
     "/auth/me": {
       get: {
         tags: ["Auth"],
@@ -237,6 +263,48 @@ export const swaggerSpec = {
         summary: "Tổng quan: balance, income, expense, recent transactions",
         responses: {
           200: { description: "Dữ liệu summary cho Dashboard" },
+        },
+      },
+    },
+
+    "/transactions/{id}": {
+      put: {
+        tags: ["Transactions"],
+        summary: "Cập nhật giao dịch",
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string" } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  type: { type: "string", enum: ["income", "expense"] },
+                  categoryId: { type: "string" },
+                  amount: { type: "number" },
+                  note: { type: "string" },
+                  date: { type: "string", format: "date-time" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: "Cập nhật thành công" },
+          404: { description: "Không tìm thấy giao dịch" },
+        },
+      },
+      delete: {
+        tags: ["Transactions"],
+        summary: "Xoá giao dịch",
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string" } },
+        ],
+        responses: {
+          200: { description: "Đã xoá giao dịch" },
+          404: { description: "Không tìm thấy giao dịch" },
         },
       },
     },
