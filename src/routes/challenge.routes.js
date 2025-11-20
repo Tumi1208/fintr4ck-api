@@ -9,6 +9,7 @@ import {
   listChallengesForUser,
   joinChallenge,
   getMyUserChallenges,
+  checkInChallenge,
 } from "../controllers/challenge.controller.js";
 
 const router = express.Router();
@@ -23,6 +24,7 @@ router.post("/:id/join", checkRole("USER"), joinChallenge);
 
 // User xem challenge của mình đã tham gia
 router.get("/my-challenges", checkRole("USER"), getMyUserChallenges);
+router.post("/my-challenges/:id/check-in", checkRole("USER"), checkInChallenge);
 
 // Tạo challenge (ADMIN | PARTNER)
 router.post("/", checkRole("ADMIN", "PARTNER"), createChallenge);

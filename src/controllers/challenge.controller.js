@@ -3,6 +3,40 @@ import Challenge from "../models/Challenge.js";
 import UserChallenge from "../models/UserChallenge.js";
 import User from "../models/User.js";
 
+function updateStreak(userChallenge, today) {
+  const startOf = (d) => {
+    const copy = new Date(d);
+    copy.setHours(0, 0, 0, 0);
+    return copy;
+  };
+  const last = userChallenge.lastCheckInDate ? startOf(userChallenge.lastCheckInDate) : null;
+  const current = startOf(today);
+  let diffDays = null;
+  if (last) {
+    diffDays = Math.floor((current - last) / (1000 * 60 * 60 * 24));
+  }
+
+  if (last && diffDays === 0) {
+    throw new Error("Bạn đã check-in hôm nay");
+  }
+
+  if (!last) {
+    userChallenge.currentStreak = 1;
+  } else if (diffDays === 1) {
+    userChallenge.currentStreak += 1;
+  } else {
+    userChallenge.currentStreak = 1;
+  }
+
+  if (userChallenge.currentStreak > userChallenge.longestStreak) {
+    userChallenge.longestStreak = userChallenge.currentStreak;
+  }
+
+  userChallenge.completedDays += 1;
+  userChallenge.lastCheckInDate = current;
+  return userChallenge;
+}
+
 export async function createChallenge(req, res, next) {
   try {
     const payload = {
@@ -118,6 +152,38 @@ export async function getMyUserChallenges(req, res, next) {
       .populate("challenge", "title type durationDays targetAmountPerDay")
       .sort({ createdAt: -1 });
     res.json(list);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function checkInChallenge(req, res, next) {
+  try {
+    const { id } = req.params;
+    const userChallenge = await UserChallenge.findOne({ _id: id, user: req.userId }).populate(
+      "challenge",
+      "durationDays"
+    );
+    if (!userChallenge) return res.status(404).json({ message: "Không tìm thấy challenge" });
+    if (userChallenge.status !== "ACTIVE") {
+      return res.status(400).json({ message: "Challenge không ở trạng thái ACTIVE" });
+    }
+
+    try {
+      updateStreak(userChallenge, new Date());
+    } catch (err) {
+      return res.status(400).json({ message: err.message });
+    }
+
+    if (
+      userChallenge.challenge?.durationDays &&
+      userChallenge.completedDays >= userChallenge.challenge.durationDays
+    ) {
+      userChallenge.status = "COMPLETED";
+    }
+
+    await userChallenge.save();
+    res.json(userChallenge);
   } catch (err) {
     next(err);
   }
