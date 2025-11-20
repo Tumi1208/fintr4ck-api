@@ -28,10 +28,10 @@ const userSchema = new mongoose.Schema(
     partnerProfile: {
       storeName: { type: String, trim: true },
       description: { type: String, trim: true },
-      logoUrl: { type: String, trim: true },
-    },
+    logoUrl: { type: String, trim: true },
   },
-  { timestamps: true }
+},
+{ timestamps: true }
 );
 
 // Đảm bảo partner có tên cửa hàng
