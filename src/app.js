@@ -11,7 +11,6 @@ import healthRoutes from "./routes/health.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import reportRoutes from "./routes/report.routes.js";
-import challengeRoutes from "./routes/challenge.routes.js";
 import { errorHandler } from "./middleware/error.js";
 
 // --- IMPORT KHẨN CẤP ĐỂ FIX LỖI 404 ---
@@ -65,7 +64,6 @@ app.use("/api/v1/transactions", transactionRoutes);
 app.use("/api/v1/categories", categoryRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/reports", reportRoutes);
-app.use("/api/v1/challenges", challengeRoutes);
 
 // Middleware xử lý lỗi chung
 app.use(errorHandler);
