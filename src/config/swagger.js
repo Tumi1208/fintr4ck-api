@@ -8,7 +8,7 @@ export const swaggerSpec = {
   info: {
     title: "Fintr4ck API",
     version: "1.0.0",
-    description: "Tài liệu API cho Fintr4ck (đồ án web)",
+    description: "Tài liệu API Fintr4ck (backend) cho web app hiện tại. Ngôn ngữ mặc định: tiếng Việt.",
   },
   servers: [
     {
@@ -33,6 +33,13 @@ export const swaggerSpec = {
           email: { type: "string" },
         },
       },
+      AuthResponse: {
+        type: "object",
+        properties: {
+          token: { type: "string" },
+          user: { $ref: "#/components/schemas/User" },
+        },
+      },
       Category: {
         type: "object",
         properties: {
@@ -41,6 +48,10 @@ export const swaggerSpec = {
           type: { type: "string", enum: ["income", "expense"] },
           icon: { type: "string" },
         },
+      },
+      CategoryList: {
+        type: "array",
+        items: { $ref: "#/components/schemas/Category" },
       },
       Transaction: {
         type: "object",
@@ -53,6 +64,25 @@ export const swaggerSpec = {
           date: { type: "string", format: "date-time" },
         },
       },
+      TransactionList: {
+        type: "array",
+        items: { $ref: "#/components/schemas/Transaction" },
+      },
+      Summary: {
+        type: "object",
+        properties: {
+          currentBalance: { type: "number" },
+          totalIncome: { type: "number" },
+          totalExpense: { type: "number" },
+          recentTransactions: { $ref: "#/components/schemas/TransactionList" },
+        },
+      },
+      Message: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+        },
+      },
     },
   },
   security: [
@@ -62,11 +92,11 @@ export const swaggerSpec = {
   ],
   tags: [
     { name: "System", description: "Kiểm tra trạng thái server" },
-    { name: "Auth", description: "Đăng ký, đăng nhập, thông tin user" },
-    { name: "Transactions", description: "Quản lý giao dịch" },
+    { name: "Auth", description: "Đăng ký, đăng nhập, đặt lại mật khẩu" },
+    { name: "Transactions", description: "Quản lý giao dịch (dashboard, transactions page)" },
     { name: "Categories", description: "Quản lý danh mục thu/chi" },
-    { name: "Users", description: "Cài đặt tài khoản" },
-    { name: "Reports", description: "Báo cáo, thống kê" },
+    { name: "Users", description: "Cài đặt tài khoản (hồ sơ, mật khẩu, xoá tài khoản)" },
+    { name: "Reports", description: "Báo cáo/biểu đồ" },
   ],
   paths: {
     // ========= System =========
@@ -106,9 +136,11 @@ export const swaggerSpec = {
         responses: {
           201: {
             description: "Đăng ký thành công",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/AuthResponse" } } },
           },
           400: {
             description: "Dữ liệu không hợp lệ / Email đã tồn tại",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } },
           },
         },
       },
@@ -134,8 +166,11 @@ export const swaggerSpec = {
           },
         },
         responses: {
-          200: { description: "Đăng nhập thành công" },
-          400: { description: "Sai email hoặc mật khẩu" },
+          200: {
+            description: "Đăng nhập thành công",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/AuthResponse" } } },
+          },
+          400: { description: "Sai email hoặc mật khẩu", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
         },
       },
     },
@@ -215,16 +250,19 @@ export const swaggerSpec = {
             in: "query",
             schema: { type: "string" },
           },
+          {
+            name: "limit",
+            in: "query",
+            schema: { type: "integer", minimum: 1 },
+            description: "Giới hạn số giao dịch trả về (mặc định không giới hạn)",
+          },
         ],
         responses: {
           200: {
             description: "Danh sách giao dịch",
             content: {
               "application/json": {
-                schema: {
-                  type: "array",
-                  items: { $ref: "#/components/schemas/Transaction" },
-                },
+                schema: { $ref: "#/components/schemas/TransactionList" },
               },
             },
           },
@@ -262,7 +300,10 @@ export const swaggerSpec = {
         tags: ["Transactions"],
         summary: "Tổng quan: balance, income, expense, recent transactions",
         responses: {
-          200: { description: "Dữ liệu summary cho Dashboard" },
+          200: {
+            description: "Dữ liệu summary cho Dashboard",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Summary" } } },
+          },
         },
       },
     },
@@ -292,8 +333,11 @@ export const swaggerSpec = {
           },
         },
         responses: {
-          200: { description: "Cập nhật thành công" },
-          404: { description: "Không tìm thấy giao dịch" },
+          200: {
+            description: "Cập nhật thành công",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Transaction" } } },
+          },
+          404: { description: "Không tìm thấy giao dịch", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
         },
       },
       delete: {
@@ -303,8 +347,8 @@ export const swaggerSpec = {
           { name: "id", in: "path", required: true, schema: { type: "string" } },
         ],
         responses: {
-          200: { description: "Đã xoá giao dịch" },
-          404: { description: "Không tìm thấy giao dịch" },
+          200: { description: "Đã xoá giao dịch", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
+          404: { description: "Không tìm thấy giao dịch", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
         },
       },
     },
@@ -319,10 +363,7 @@ export const swaggerSpec = {
             description: "Danh sách category",
             content: {
               "application/json": {
-                schema: {
-                  type: "array",
-                  items: { $ref: "#/components/schemas/Category" },
-                },
+                schema: { $ref: "#/components/schemas/CategoryList" },
               },
             },
           },
@@ -381,8 +422,11 @@ export const swaggerSpec = {
           },
         },
         responses: {
-          200: { description: "Cập nhật thành công" },
-          404: { description: "Không tìm thấy danh mục" },
+          200: {
+            description: "Cập nhật thành công",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Category" } } },
+          },
+          404: { description: "Không tìm thấy danh mục", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
         },
       },
       delete: {
@@ -397,8 +441,8 @@ export const swaggerSpec = {
           },
         ],
         responses: {
-          200: { description: "Đã xoá danh mục" },
-          404: { description: "Không tìm thấy danh mục" },
+          200: { description: "Đã xoá danh mục", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
+          404: { description: "Không tìm thấy danh mục", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
         },
       },
     },
@@ -423,7 +467,7 @@ export const swaggerSpec = {
           },
         },
         responses: {
-          200: { description: "Cập nhật thành công" },
+          200: { description: "Cập nhật thành công", content: { "application/json": { schema: { $ref: "#/components/schemas/User" } } } },
         },
       },
     },
@@ -459,7 +503,7 @@ export const swaggerSpec = {
         tags: ["Users"],
         summary: "Xoá tài khoản hiện tại và dữ liệu liên quan",
         responses: {
-          200: { description: "Đã xoá tài khoản" },
+          200: { description: "Đã xoá tài khoản", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
         },
       },
     },
