@@ -19,8 +19,27 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    role: {
+      type: String,
+      enum: ["USER", "PARTNER", "ADMIN"],
+      default: "USER",
+      index: true,
+    },
+    partnerProfile: {
+      storeName: { type: String, trim: true },
+      description: { type: String, trim: true },
+      logoUrl: { type: String, trim: true },
+    },
   },
   { timestamps: true }
 );
+
+// Đảm bảo partner có tên cửa hàng
+userSchema.pre("validate", function (next) {
+  if (this.role === "PARTNER" && !this.partnerProfile?.storeName) {
+    this.invalidate("partnerProfile.storeName", "Partner cần storeName");
+  }
+  next();
+});
 
 export default mongoose.model("User", userSchema);
