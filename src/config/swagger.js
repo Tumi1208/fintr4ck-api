@@ -77,6 +77,60 @@ export const swaggerSpec = {
           recentTransactions: { $ref: "#/components/schemas/TransactionList" },
         },
       },
+      Challenge: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          title: { type: "string" },
+          description: { type: "string" },
+          type: { type: "string", enum: ["NO_SPEND", "SAVE_FIXED", "CUSTOM"] },
+          durationDays: { type: "number" },
+          targetAmountPerDay: { type: "number" },
+          createdBy: { type: "string" },
+          isPublic: { type: "boolean" },
+          startDate: { type: "string", format: "date-time" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      ChallengeList: {
+        type: "array",
+        items: { $ref: "#/components/schemas/Challenge" },
+      },
+      UserChallenge: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          user: { type: "string" },
+          challenge: {
+            anyOf: [
+              { type: "string" },
+              {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  type: { type: "string" },
+                  durationDays: { type: "number" },
+                  targetAmountPerDay: { type: "number" },
+                },
+              },
+            ],
+          },
+          joinedAt: { type: "string", format: "date-time" },
+          startDate: { type: "string", format: "date-time" },
+          currentStreak: { type: "number" },
+          longestStreak: { type: "number" },
+          completedDays: { type: "number" },
+          status: { type: "string", enum: ["ACTIVE", "COMPLETED", "FAILED"] },
+          lastCheckInDate: { type: "string", format: "date-time" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      UserChallengeList: {
+        type: "array",
+        items: { $ref: "#/components/schemas/UserChallenge" },
+      },
       Message: {
         type: "object",
         properties: {
@@ -97,6 +151,7 @@ export const swaggerSpec = {
     { name: "Categories", description: "Quản lý danh mục thu/chi" },
     { name: "Users", description: "Cài đặt tài khoản (hồ sơ, mật khẩu, xoá tài khoản)" },
     { name: "Reports", description: "Báo cáo/biểu đồ" },
+    { name: "Challenges", description: "Challenge quản lý chi tiêu / thử thách cá nhân" },
   ],
   paths: {
     // ========= System =========
@@ -515,6 +570,116 @@ export const swaggerSpec = {
         summary: "Breakdown chi tiêu theo category cho chart",
         responses: {
           200: { description: "Dữ liệu breakdown" },
+        },
+      },
+    },
+
+    // ========= Challenges =========
+    "/challenges": {
+      get: {
+        tags: ["Challenges"],
+        summary: "Danh sách challenge public hoặc do chính user tạo",
+        parameters: [
+          { name: "type", in: "query", schema: { type: "string", enum: ["NO_SPEND", "SAVE_FIXED", "CUSTOM"] } },
+        ],
+        responses: {
+          200: { description: "Danh sách challenge", content: { "application/json": { schema: { $ref: "#/components/schemas/ChallengeList" } } } },
+        },
+      },
+      post: {
+        tags: ["Challenges"],
+        summary: "Tạo challenge (ADMIN, PARTNER)",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  type: { type: "string", enum: ["NO_SPEND", "SAVE_FIXED", "CUSTOM"] },
+                  durationDays: { type: "number" },
+                  targetAmountPerDay: { type: "number" },
+                  isPublic: { type: "boolean" },
+                  startDate: { type: "string", format: "date-time" },
+                },
+              },
+            },
+          },
+        },
+        responses: { 201: { description: "Tạo challenge thành công" } },
+      },
+    },
+
+    "/challenges/mine": {
+      get: {
+        tags: ["Challenges"],
+        summary: "Challenge do mình tạo (ADMIN, PARTNER)",
+        responses: {
+          200: { description: "Danh sách challenge", content: { "application/json": { schema: { $ref: "#/components/schemas/ChallengeList" } } } },
+        },
+      },
+    },
+
+    "/challenges/{id}": {
+      patch: {
+        tags: ["Challenges"],
+        summary: "Cập nhật challenge (Admin tất cả, Partner chỉ của mình)",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  type: { type: "string", enum: ["NO_SPEND", "SAVE_FIXED", "CUSTOM"] },
+                  durationDays: { type: "number" },
+                  targetAmountPerDay: { type: "number" },
+                  isPublic: { type: "boolean" },
+                  startDate: { type: "string", format: "date-time" },
+                },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: "Cập nhật thành công" }, 404: { description: "Không tìm thấy challenge" } },
+      },
+    },
+
+    "/challenges/{id}/join": {
+      post: {
+        tags: ["Challenges"],
+        summary: "User tham gia challenge",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          201: { description: "Tham gia thành công", content: { "application/json": { schema: { $ref: "#/components/schemas/UserChallenge" } } } },
+          400: { description: "Đã tham gia hoặc không hợp lệ", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
+        },
+      },
+    },
+
+    "/challenges/my-challenges": {
+      get: {
+        tags: ["Challenges"],
+        summary: "Danh sách challenge user đang tham gia",
+        responses: {
+          200: { description: "Danh sách tham gia", content: { "application/json": { schema: { $ref: "#/components/schemas/UserChallengeList" } } } },
+        },
+      },
+    },
+
+    "/challenges/my-challenges/{id}/check-in": {
+      post: {
+        tags: ["Challenges"],
+        summary: "Check-in một ngày cho challenge",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          200: { description: "Check-in thành công", content: { "application/json": { schema: { $ref: "#/components/schemas/UserChallenge" } } } },
+          400: { description: "Không thể check-in", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
+          404: { description: "Không tìm thấy", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
         },
       },
     },
