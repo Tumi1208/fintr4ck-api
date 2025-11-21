@@ -6,6 +6,7 @@ import {
   joinChallenge,
   getMyChallenges,
   checkInChallenge,
+  leaveChallenge,
 } from "../controllers/challenge.controller.js";
 
 const router = express.Router();
@@ -16,5 +17,6 @@ router.get("/", listChallenges);
 router.post("/:id/join", joinChallenge);
 router.get("/my-challenges", getMyChallenges);
 router.post("/my-challenges/:id/check-in", checkInChallenge);
+router.delete("/my-challenges/:id", leaveChallenge);
 
 export default router;

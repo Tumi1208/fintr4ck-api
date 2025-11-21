@@ -99,3 +99,14 @@ export async function checkInChallenge(req, res, next) {
     next(err);
   }
 }
+
+export async function leaveChallenge(req, res, next) {
+  try {
+    const { id } = req.params;
+    const deleted = await UserChallenge.findOneAndDelete({ _id: id, user: req.userId });
+    if (!deleted) return res.status(404).json({ message: "Không tìm thấy challenge" });
+    res.json({ message: "Đã huỷ tham gia" });
+  } catch (err) {
+    next(err);
+  }
+}
