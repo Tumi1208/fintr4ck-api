@@ -83,6 +83,32 @@ export const swaggerSpec = {
           message: { type: "string" },
         },
       },
+      Challenge: {
+        type: "object",
+        properties: {
+          _id: { type: "string" },
+          title: { type: "string" },
+          description: { type: "string" },
+          type: { type: "string", enum: ["NO_SPEND", "SAVE_FIXED", "CUSTOM"] },
+          durationDays: { type: "number" },
+          targetAmountPerDay: { type: "number" },
+          isActive: { type: "boolean" },
+        },
+      },
+      UserChallenge: {
+        type: "object",
+        properties: {
+          _id: { type: "string" },
+          challenge: { $ref: "#/components/schemas/Challenge" },
+          status: { type: "string", enum: ["ACTIVE", "COMPLETED", "FAILED"] },
+          joinedAt: { type: "string", format: "date-time" },
+          startDate: { type: "string", format: "date-time" },
+          lastCheckInDate: { type: "string", format: "date-time" },
+          completedDays: { type: "number" },
+          currentStreak: { type: "number" },
+          longestStreak: { type: "number" },
+        },
+      },
     },
   },
   security: [
@@ -95,6 +121,7 @@ export const swaggerSpec = {
     { name: "Auth", description: "Đăng ký, đăng nhập, đặt lại mật khẩu" },
     { name: "Transactions", description: "Quản lý giao dịch (dashboard, transactions page)" },
     { name: "Categories", description: "Quản lý danh mục thu/chi" },
+    { name: "Challenges", description: "Danh sách challenge, tham gia, check-in" },
     { name: "Users", description: "Cài đặt tài khoản (hồ sơ, mật khẩu, xoá tài khoản)" },
     { name: "Reports", description: "Báo cáo/biểu đồ" },
   ],
@@ -481,6 +508,68 @@ export const swaggerSpec = {
         responses: {
           200: { description: "Đã xoá danh mục", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
           404: { description: "Không tìm thấy danh mục", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
+        },
+      },
+    },
+
+    // ========= Challenges =========
+    "/challenges": {
+      get: {
+        tags: ["Challenges"],
+        summary: "Danh sách challenge đang hoạt động",
+        responses: {
+          200: {
+            description: "Danh sách challenge",
+            content: { "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/Challenge" } } } },
+          },
+        },
+      },
+    },
+
+    "/challenges/{id}/join": {
+      post: {
+        tags: ["Challenges"],
+        summary: "Tham gia một challenge",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          201: { description: "Tham gia thành công", content: { "application/json": { schema: { $ref: "#/components/schemas/UserChallenge" } } } },
+          400: { description: "Đã tham gia hoặc challenge không hợp lệ", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
+          404: { description: "Challenge không tồn tại", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
+        },
+      },
+    },
+
+    "/challenges/my-challenges": {
+      get: {
+        tags: ["Challenges"],
+        summary: "Danh sách challenge user đã tham gia",
+        responses: {
+          200: { description: "Danh sách challenge của user", content: { "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/UserChallenge" } } } } },
+        },
+      },
+    },
+
+    "/challenges/my-challenges/{id}/check-in": {
+      post: {
+        tags: ["Challenges"],
+        summary: "Check-in một ngày cho challenge đang tham gia",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          200: { description: "Check-in thành công", content: { "application/json": { schema: { $ref: "#/components/schemas/UserChallenge" } } } },
+          400: { description: "Không thể check-in (đã check hoặc không ACTIVE)", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
+          404: { description: "Không tìm thấy challenge", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
+        },
+      },
+    },
+
+    "/challenges/my-challenges/{id}": {
+      delete: {
+        tags: ["Challenges"],
+        summary: "Huỷ tham gia một challenge",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          200: { description: "Đã huỷ", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
+          404: { description: "Không tìm thấy challenge", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
         },
       },
     },
