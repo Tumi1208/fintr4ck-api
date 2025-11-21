@@ -6,6 +6,8 @@ import {
   createTransaction,
   updateTransaction,
   deleteTransaction,
+  deleteAllTransactions,
+  bulkDeleteTransactions,
   getSummary,
 } from "../controllers/transaction.controller.js";
 
@@ -18,6 +20,12 @@ router.get("/", getTransactions);
 
 // POST /api/v1/transactions
 router.post("/", createTransaction);
+
+// DELETE /api/v1/transactions (delete all of current user)
+router.delete("/", deleteAllTransactions);
+
+// POST /api/v1/transactions/bulk-delete
+router.post("/bulk-delete", bulkDeleteTransactions);
 
 // GET /api/v1/transactions/summary
 router.get("/summary", getSummary);

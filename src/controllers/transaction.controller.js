@@ -176,6 +176,39 @@ export async function deleteTransaction(req, res, next) {
   }
 }
 
+export async function deleteAllTransactions(req, res, next) {
+  try {
+    const userId = getUserId(req);
+    const result = await Transaction.deleteMany({ user: userId });
+    res.json({ message: "Đã xoá toàn bộ giao dịch của bạn", deleted: result?.deletedCount || 0 });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function bulkDeleteTransactions(req, res, next) {
+  try {
+    const userId = getUserId(req);
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: "Danh sách giao dịch cần xoá không hợp lệ" });
+    }
+
+    const invalidIds = ids.filter((id) => !mongoose.Types.ObjectId.isValid(id));
+    if (invalidIds.length) {
+      return res.status(400).json({ message: "Có giao dịch không hợp lệ, vui lòng thử lại" });
+    }
+
+    const objectIds = ids.map((id) => new mongoose.Types.ObjectId(id));
+    const result = await Transaction.deleteMany({ _id: { $in: objectIds }, user: userId });
+
+    res.json({ message: "Đã xoá giao dịch đã chọn", deleted: result?.deletedCount || 0 });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // --- CÁC HÀM DASHBOARD (GIỮ NGUYÊN LOGIC MỚI NHẤT) ---
 
 export async function getSummary(req, res, next) {
@@ -244,6 +277,8 @@ export default {
   createTransaction,
   updateTransaction,
   deleteTransaction,
+  deleteAllTransactions,
+  bulkDeleteTransactions,
   getSummary,
   getExpenseBreakdown,
 };

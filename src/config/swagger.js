@@ -293,6 +293,44 @@ export const swaggerSpec = {
           201: { description: "Tạo giao dịch thành công" },
         },
       },
+      delete: {
+        tags: ["Transactions"],
+        summary: "Xoá toàn bộ giao dịch của user hiện tại",
+        responses: {
+          200: { description: "Đã xoá tất cả giao dịch", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
+        },
+      },
+    },
+
+    "/transactions/bulk-delete": {
+      post: {
+        tags: ["Transactions"],
+        summary: "Xoá nhiều giao dịch đã chọn",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["ids"],
+                properties: {
+                  ids: {
+                    type: "array",
+                    items: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Đã xoá giao dịch",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } },
+          },
+          400: { description: "Danh sách giao dịch không hợp lệ" },
+        },
+      },
     },
 
     "/transactions/summary": {
