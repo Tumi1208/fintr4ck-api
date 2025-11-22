@@ -28,7 +28,7 @@ export const swaggerSpec = {
       User: {
         type: "object",
         properties: {
-          id: { type: "string" },
+          _id: { type: "string" },
           name: { type: "string" },
           email: { type: "string" },
         },
@@ -43,7 +43,7 @@ export const swaggerSpec = {
       Category: {
         type: "object",
         properties: {
-          id: { type: "string" },
+          _id: { type: "string" },
           name: { type: "string" },
           type: { type: "string", enum: ["income", "expense"] },
           icon: { type: "string" },
@@ -56,12 +56,14 @@ export const swaggerSpec = {
       Transaction: {
         type: "object",
         properties: {
-          id: { type: "string" },
+          _id: { type: "string" },
           type: { type: "string", enum: ["income", "expense"] },
           category: { $ref: "#/components/schemas/Category" },
+          user: { $ref: "#/components/schemas/User" },
           amount: { type: "number" },
           note: { type: "string" },
           date: { type: "string", format: "date-time" },
+          createdAt: { type: "string", format: "date-time" },
         },
       },
       TransactionList: {
@@ -81,6 +83,16 @@ export const swaggerSpec = {
         type: "object",
         properties: {
           message: { type: "string" },
+        },
+      },
+      Budget: {
+        type: "object",
+        properties: {
+          _id: { type: "string" },
+          categoryId: { type: "string" },
+          period: { type: "string", enum: ["monthly"] },
+          limitAmount: { type: "number" },
+          monthKey: { type: "string", example: "2024-11" },
         },
       },
       Challenge: {
