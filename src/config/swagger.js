@@ -30,6 +30,7 @@ export const swaggerSpec = {
         properties: {
           _id: { type: "string" },
           name: { type: "string" },
+          displayName: { type: "string", description: "Tên hiển thị của người dùng" },
           email: { type: "string" },
         },
       },
@@ -600,6 +601,7 @@ export const swaggerSpec = {
                 required: ["name"],
                 properties: {
                   name: { type: "string" },
+                  displayName: { type: "string", description: "Tên hiển thị (tuỳ chọn, nếu không có sẽ dùng name)" },
                 },
               },
             },
