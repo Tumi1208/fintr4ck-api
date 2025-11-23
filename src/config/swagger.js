@@ -28,10 +28,12 @@ export const swaggerSpec = {
       User: {
         type: "object",
         properties: {
-          _id: { type: "string" },
+          id: { type: "string", description: "Có thể xuất hiện trong các response đăng nhập/đăng ký" },
+          _id: { type: "string", description: "ID MongoDB (các API khác)" },
           name: { type: "string" },
-          displayName: { type: "string", description: "Tên hiển thị của người dùng" },
           email: { type: "string" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
         },
       },
       AuthResponse: {
@@ -84,6 +86,14 @@ export const swaggerSpec = {
         type: "object",
         properties: {
           message: { type: "string" },
+        },
+      },
+      ExpenseBreakdownItem: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          amount: { type: "number" },
+          total: { type: "number" },
         },
       },
       Budget: {
@@ -601,14 +611,25 @@ export const swaggerSpec = {
                 required: ["name"],
                 properties: {
                   name: { type: "string" },
-                  displayName: { type: "string", description: "Tên hiển thị (tuỳ chọn, nếu không có sẽ dùng name)" },
                 },
               },
             },
           },
         },
         responses: {
-          200: { description: "Cập nhật thành công", content: { "application/json": { schema: { $ref: "#/components/schemas/User" } } } },
+          200: {
+            description: "Cập nhật thành công",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    user: { $ref: "#/components/schemas/User" },
+                  },
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -633,8 +654,8 @@ export const swaggerSpec = {
           },
         },
         responses: {
-          200: { description: "Đổi mật khẩu thành công" },
-          400: { description: "Mật khẩu hiện tại không đúng hoặc dữ liệu sai" },
+          200: { description: "Đổi mật khẩu thành công", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
+          400: { description: "Mật khẩu hiện tại không đúng hoặc dữ liệu sai", content: { "application/json": { schema: { $ref: "#/components/schemas/Message" } } } },
         },
       },
     },
@@ -655,7 +676,14 @@ export const swaggerSpec = {
         tags: ["Reports"],
         summary: "Breakdown chi tiêu theo category cho chart",
         responses: {
-          200: { description: "Dữ liệu breakdown" },
+          200: {
+            description: "Dữ liệu breakdown",
+            content: {
+              "application/json": {
+                schema: { type: "array", items: { $ref: "#/components/schemas/ExpenseBreakdownItem" } },
+              },
+            },
+          },
         },
       },
     },
