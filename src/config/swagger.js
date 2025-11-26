@@ -3,7 +3,12 @@ import swaggerUi from "swagger-ui-express";
 
 export { swaggerUi };
 
-const serverUrl = process.env.SWAGGER_SERVER_URL || "http://localhost:4000/api/v1";
+const defaultServerUrl =
+  process.env.NODE_ENV === "production"
+    ? "https://api.fintr4ck.click/api/v1"
+    : "http://localhost:4000/api/v1";
+
+const serverUrl = process.env.SWAGGER_SERVER_URL || defaultServerUrl;
 
 export const swaggerSpec = {
   openapi: "3.0.0",

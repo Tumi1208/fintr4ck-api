@@ -21,14 +21,30 @@ import { requireAuth } from "./middleware/auth.js";
 dotenv.config();
 
 const app = express();
+const isProd = process.env.NODE_ENV === "production";
+
+const parseOrigins = (value) =>
+  (value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const defaultDevOrigins = ["http://localhost:5173", "http://localhost:3000"];
+const defaultProdOrigins = ["https://fintr4ck.click", "https://www.fintr4ck.click"];
+const allowlist = [
+  ...(isProd ? defaultProdOrigins : defaultDevOrigins),
+  ...parseOrigins(process.env.CLIENT_ORIGIN),
+].filter(Boolean);
 
 // CORS
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      process.env.CLIENT_ORIGIN,
-    ].filter(Boolean),
+    // Allow comma-separated CLIENT_ORIGIN with env-specific defaults; block non-allowlisted origins in prod.
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowlist.includes(origin)) return callback(null, true);
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   })
 );
