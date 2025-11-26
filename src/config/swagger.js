@@ -3,6 +3,8 @@ import swaggerUi from "swagger-ui-express";
 
 export { swaggerUi };
 
+const serverUrl = process.env.SWAGGER_SERVER_URL || "http://localhost:4000/api/v1";
+
 export const swaggerSpec = {
   openapi: "3.0.0",
   info: {
@@ -11,6 +13,10 @@ export const swaggerSpec = {
     description: "Tài liệu API Fintr4ck (backend) cho web app hiện tại. Ngôn ngữ mặc định: tiếng Việt.",
   },
   servers: [
+    {
+      url: serverUrl,
+      description: "Production",
+    },
     {
       url: "http://localhost:4000/api/v1",
       description: "Local development",
